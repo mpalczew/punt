@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var localMonitor: Any?
     private var clickMonitor: Any?
+    private let autoUpdater = AutoUpdater()
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -41,6 +42,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         registerLocalMonitor()
         registerClickOutsideMonitor()
+
+        autoUpdater.isPanelHidden = { [weak self] in !(self?.panel.isVisible ?? false) }
+        autoUpdater.startMonitoring()
 
         if !UserDefaults.standard.bool(forKey: "punt_has_launched") {
             UserDefaults.standard.set(true, forKey: "punt_has_launched")
@@ -124,14 +128,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
 
-            // Everything else: no modifiers (except capsLock, numericPad, function)
-            // Arrow keys set numericPad + function flags
+            // Allow arrow keys (they set numericPad + function flags)
             guard flags.subtracting([.capsLock, .numericPad, .function]).isEmpty else { return event }
 
             switch event.keyCode {
             case 53:  // Escape
                 if !self.pickerState.profileQuery.isEmpty {
-                    // Clear search first
                     self.pickerState.profileQuery = ""
                 } else {
                     self.hidePanel()
@@ -161,20 +163,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 break
             }
 
-            // Number keys 1-9: if no profile query active, select browser
-            if self.pickerState.profileQuery.isEmpty {
-                if let digit = self.digitFromKeyCode(event.keyCode), digit >= 1, digit <= 9 {
-                    let index = digit - 1
-                    let visible = self.pickerState.visibleBrowsers
-                    if index < visible.count {
-                        self.launchURL(in: visible[index], profile: nil)
-                    }
-                    return nil
+            // Number keys 1-9: always select browser (no conflict with profiles)
+            if let digit = self.digitFromKeyCode(event.keyCode), digit >= 1, digit <= 9 {
+                let index = digit - 1
+                let visible = self.pickerState.visibleBrowsers
+                if index < visible.count {
+                    self.launchURL(in: visible[index], profile: nil)
                 }
+                return nil
             }
 
-            // Any character: fuzzy filter profiles
-            if let chars = event.characters, let char = chars.first, char.isLetter || char.isNumber {
+            // Letter keys: fuzzy filter profiles (only when browser has profiles)
+            if let chars = event.characters, let char = chars.first, char.isLetter {
                 if self.pickerState.hasProfiles {
                     self.pickerState.appendToProfileQuery(char)
                     return nil

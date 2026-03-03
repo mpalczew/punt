@@ -7,6 +7,8 @@ cask "punt" do
   desc "macOS browser picker — choose which browser opens each link"
   homepage "https://github.com/mpalczew/punt"
 
+  depends_on macos: ">= :ventura"
+
   app "Punt.app"
 
   zap trash: [

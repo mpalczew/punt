@@ -62,10 +62,6 @@ struct PickerView: View {
                         HStack(spacing: 8) {
                             Text(profile.displayName)
                                 .font(.system(size: 12))
-                            Spacer()
-                            if index < 9 {
-                                KeyCap("\(index + 1)")
-                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)
@@ -82,25 +78,6 @@ struct PickerView: View {
                 }
                 .padding(.vertical, 6)
             }
-
-            // Hint
-            HStack(spacing: 12) {
-                KeyCap("←→")
-                Text("browser")
-                if state.hasProfiles {
-                    KeyCap("↑↓")
-                    Text("profile")
-                    KeyCap("type")
-                    Text("filter")
-                }
-                KeyCap("⏎")
-                Text("open")
-                KeyCap("esc")
-                Text("cancel")
-            }
-            .font(.system(size: 10))
-            .foregroundColor(.secondary)
-            .padding(.bottom, 10)
         }
         .frame(minWidth: 200)
         .background(VisualEffectBlur())

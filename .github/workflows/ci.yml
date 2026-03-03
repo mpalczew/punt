@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
+    tags: ['v*']
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 jobs:
   build:
@@ -15,5 +16,117 @@ jobs:
       - name: Build
         run: make build
 
-      - name: Build Universal
+      - name: Verify app bundle
+        run: |
+          test -f .build/Punt.app/Contents/MacOS/Punt
+          file .build/Punt.app/Contents/MacOS/Punt
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Info.plist version
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" Resources/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.version }}" Resources/Info.plist
+
+      - name: Build universal binary
         run: make build-universal
+
+      - name: Verify universal binary
+        run: file .build/Punt.app/Contents/MacOS/Punt
+
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$P12_BASE64" | base64 --decode > /tmp/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import /tmp/certificate.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          rm /tmp/certificate.p12
+
+      - name: Sign app bundle
+        run: make sign
+
+      - name: Notarize and staple
+        env:
+          NOTARIZE_APPLE_ID: ${{ secrets.NOTARIZE_APPLE_ID }}
+          NOTARIZE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
+          NOTARIZE_TEAM_ID: ${{ secrets.NOTARIZE_TEAM_ID }}
+        run: |
+          ditto -c -k --keepParent .build/Punt.app .build/Punt-notarize.zip
+          xcrun notarytool submit .build/Punt-notarize.zip \
+            --apple-id "$NOTARIZE_APPLE_ID" \
+            --password "$NOTARIZE_PASSWORD" \
+            --team-id "$NOTARIZE_TEAM_ID" \
+            --wait
+          rm -f .build/Punt-notarize.zip
+          xcrun stapler staple .build/Punt.app
+
+      - name: Verify signature
+        run: |
+          codesign --verify --verbose=2 .build/Punt.app
+          spctl --assess --type exec --verbose=2 .build/Punt.app
+
+      - name: Create release zip
+        run: cd .build && zip -r -y Punt-${{ steps.version.outputs.version }}-universal.zip Punt.app
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Punt v${{ steps.version.outputs.version }}
+          body: |
+            ## Installation
+
+            **Homebrew:**
+            ```
+            brew tap mpalczew/punt
+            brew install --cask punt
+            ```
+
+            **Manual:**
+            1. Download `Punt-${{ steps.version.outputs.version }}-universal.zip` below
+            2. Unzip and drag `Punt.app` to your Applications folder
+            3. Launch Punt
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          files: |
+            .build/Punt-${{ steps.version.outputs.version }}-universal.zip
+          draft: false
+          prerelease: false
+
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          SHA256=$(shasum -a 256 .build/Punt-${{ steps.version.outputs.version }}-universal.zip | awk '{print $1}')
+          VERSION=${{ steps.version.outputs.version }}
+          git clone https://x-access-token:${GH_TOKEN}@github.com/mpalczew/homebrew-punt.git /tmp/homebrew-punt
+          cd /tmp/homebrew-punt
+          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" Casks/punt.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Casks/punt.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/punt.rb
+          git commit -m "Update cask to v${VERSION}"
+          git push origin main

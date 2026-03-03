@@ -28,6 +28,7 @@ build-universal:
 		$(BUILD_DIR)/x86_64-apple-macosx/release/$(APP_NAME) \
 		-output $(MACOS_DIR)/$(APP_NAME)
 	cp Resources/Info.plist $(CONTENTS)/Info.plist
+	cp Resources/AppIcon.icns $(CONTENTS)/Resources/AppIcon.icns
 
 run: build
 	open $(APP_BUNDLE)
