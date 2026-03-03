@@ -124,8 +124,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
 
-            // Everything else: no modifiers (except capsLock)
-            guard flags.subtracting(.capsLock).isEmpty else { return event }
+            // Everything else: no modifiers (except capsLock, numericPad, function)
+            // Arrow keys set numericPad + function flags
+            guard flags.subtracting([.capsLock, .numericPad, .function]).isEmpty else { return event }
 
             switch event.keyCode {
             case 53:  // Escape
