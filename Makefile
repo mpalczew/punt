@@ -34,15 +34,34 @@ run: build
 
 install: build
 	@was_running=false; \
-	if pgrep -x $(APP_NAME) >/dev/null 2>&1; then was_running=true; pkill -x $(APP_NAME); sleep 0.5; fi; \
+	if pgrep -x $(APP_NAME) >/dev/null 2>&1; then \
+		was_running=true; \
+		pkill -x $(APP_NAME); \
+		while pgrep -x $(APP_NAME) >/dev/null 2>&1; do sleep 0.1; done; \
+	fi; \
 	rm -rf /Applications/$(APP_NAME).app; \
 	cp -R $(APP_BUNDLE) /Applications/$(APP_NAME).app; \
 	echo "Installed $(APP_NAME).app to /Applications"; \
-	if $$was_running; then open /Applications/$(APP_NAME).app; echo "Restarted $(APP_NAME)"; fi
+	if $$was_running; then \
+		open /Applications/$(APP_NAME).app; \
+		sleep 0.5; \
+		if pgrep -x $(APP_NAME) >/dev/null 2>&1; then \
+			echo "Restarted $(APP_NAME) (pid $$(pgrep -x $(APP_NAME)))"; \
+		else \
+			echo "WARNING: $(APP_NAME) failed to start"; \
+		fi; \
+	fi
 
 restart:
-	@pkill -x $(APP_NAME) 2>/dev/null; sleep 0.5; open /Applications/$(APP_NAME).app
-	@echo "Restarted $(APP_NAME)"
+	@pkill -x $(APP_NAME) 2>/dev/null; \
+	while pgrep -x $(APP_NAME) >/dev/null 2>&1; do sleep 0.1; done; \
+	open /Applications/$(APP_NAME).app; \
+	sleep 0.5; \
+	if pgrep -x $(APP_NAME) >/dev/null 2>&1; then \
+		echo "Restarted $(APP_NAME) (pid $$(pgrep -x $(APP_NAME)))"; \
+	else \
+		echo "WARNING: $(APP_NAME) failed to start"; \
+	fi
 
 clean:
 	swift package clean
