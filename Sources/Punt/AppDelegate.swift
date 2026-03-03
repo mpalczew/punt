@@ -9,10 +9,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var localMonitor: Any?
     private var clickMonitor: Any?
-    private var pendingURL: URL?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // Register URL handler early — must be in willFinishLaunching, not didFinishLaunching
         NSAppleEventManager.shared().setEventHandler(
             self,
             andSelector: #selector(handleURLEvent(_:withReply:)),
@@ -25,7 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         pickerState = PickerState()
         pickerState.loadBrowsers()
 
-        // Panel
         let panelRect = NSRect(x: 0, y: 0, width: 600, height: 200)
         panel = PickerPanel(contentRect: panelRect)
 
@@ -36,18 +33,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         panel.contentView = NSHostingView(rootView: pickerView)
 
-        // Menu bar
         menuBarManager = MenuBarManager()
         menuBarManager.onSetDefault = { [weak self] in self?.promptSetDefaultBrowser() }
         menuBarManager.onShowSettings = { [weak self] in self?.showSettings() }
         menuBarManager.onQuit = { NSApp.terminate(nil) }
         menuBarManager.setup()
 
-        // Keyboard handling
         registerLocalMonitor()
         registerClickOutsideMonitor()
 
-        // First launch: set as default browser + register as login item
         if !UserDefaults.standard.bool(forKey: "punt_has_launched") {
             UserDefaults.standard.set(true, forKey: "punt_has_launched")
             enableLoginItem()
@@ -70,19 +64,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             cleanedURL = url
         }
 
-        // Check rules
         let mode = RuleEngine.mode
         if mode == .rulesFirst || mode == .rulesOnly {
             if let rule = RuleEngine.match(url: cleanedURL) {
                 if let browser = pickerState.browsers.first(where: { $0.id == rule.browserID }) {
                     let profile = rule.profileID.flatMap { pid in browser.profiles.first(where: { $0.id == pid }) }
-                    pickerState.recordUsage(browser)
+                    pickerState.recordUsage(browser, profile: profile)
                     BrowserLauncher.open(url: cleanedURL, in: browser, profile: profile)
                     return
                 }
             }
             if mode == .rulesOnly {
-                // No rule matched, open in first visible browser
                 if let browser = pickerState.visibleBrowsers.first {
                     BrowserLauncher.open(url: cleanedURL, in: browser)
                 }
@@ -90,21 +82,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // Show picker
         showPicker(for: cleanedURL)
     }
 
     private func showPicker(for url: URL) {
         pickerState.url = url
         pickerState.loadBrowsers()
-        panel.centerOnScreen()
 
-        // Resize panel based on browser count
         let browserCount = pickerState.visibleBrowsers.count
         let width = CGFloat(max(browserCount, 3)) * 80 + 32
         panel.setContentSize(NSSize(width: min(width, 800), height: 200))
         panel.centerOnScreen()
-
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -116,7 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func launchURL(in browser: Browser, profile: BrowserProfile?) {
         guard let url = pickerState.url else { return }
-        pickerState.recordUsage(browser)
+        pickerState.recordUsage(browser, profile: profile)
         hidePanel()
         BrowserLauncher.open(url: url, in: browser, profile: profile)
     }
@@ -128,15 +116,53 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self = self else { return event }
             guard self.panel.isVisible else { return event }
 
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
             // Cmd+Q to quit
-            if event.keyCode == 12 && event.modifierFlags.contains(.command) {
+            if event.keyCode == 12 && flags.contains(.command) {
                 NSApp.terminate(nil)
                 return nil
             }
 
-            // Cmd+1 through Cmd+9 to select browser
-            if event.modifierFlags.contains(.command) {
-                if let digit = digitFromKeyCode(event.keyCode), digit >= 1, digit <= 9 {
+            // Everything else: no modifiers (except capsLock)
+            guard flags.subtracting(.capsLock).isEmpty else { return event }
+
+            switch event.keyCode {
+            case 53:  // Escape
+                if !self.pickerState.profileQuery.isEmpty {
+                    // Clear search first
+                    self.pickerState.profileQuery = ""
+                } else {
+                    self.hidePanel()
+                }
+                return nil
+            case 36:  // Return
+                if let browser = self.pickerState.selectedBrowser {
+                    self.launchURL(in: browser, profile: self.pickerState.selectedProfile)
+                }
+                return nil
+            case 123: // Left arrow
+                self.pickerState.moveLeft()
+                return nil
+            case 124: // Right arrow
+                self.pickerState.moveRight()
+                return nil
+            case 125: // Down arrow
+                self.pickerState.moveDown()
+                return nil
+            case 126: // Up arrow
+                self.pickerState.moveUp()
+                return nil
+            case 51:  // Backspace
+                self.pickerState.backspaceProfileQuery()
+                return nil
+            default:
+                break
+            }
+
+            // Number keys 1-9: if no profile query active, select browser
+            if self.pickerState.profileQuery.isEmpty {
+                if let digit = self.digitFromKeyCode(event.keyCode), digit >= 1, digit <= 9 {
                     let index = digit - 1
                     let visible = self.pickerState.visibleBrowsers
                     if index < visible.count {
@@ -146,24 +172,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
 
-            switch event.keyCode {
-            case 53:  // Escape
-                self.hidePanel()
-                return nil
-            case 36:  // Return
-                if let browser = self.pickerState.selectedBrowser {
-                    self.launchURL(in: browser, profile: nil)
+            // Any character: fuzzy filter profiles
+            if let chars = event.characters, let char = chars.first, char.isLetter || char.isNumber {
+                if self.pickerState.hasProfiles {
+                    self.pickerState.appendToProfileQuery(char)
+                    return nil
                 }
-                return nil
-            case 123: // Left arrow
-                self.pickerState.moveLeft()
-                return nil
-            case 124: // Right arrow
-                self.pickerState.moveRight()
-                return nil
-            default:
-                return event
             }
+
+            return event
         }
     }
 

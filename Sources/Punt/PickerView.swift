@@ -10,7 +10,7 @@ struct PickerView: View {
         VStack(spacing: 0) {
             // URL display
             if let url = state.url {
-                Text(url.absoluteString)
+                Text(url.host ?? url.absoluteString)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -38,36 +38,61 @@ struct PickerView: View {
             .padding(.bottom, 12)
 
             // Profiles for selected browser (if any)
-            if let browser = state.selectedBrowser, !browser.profiles.isEmpty {
+            if state.hasProfiles {
                 Divider()
                     .padding(.horizontal, 12)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Profiles")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    // Search field for profiles
+                    if !state.profileQuery.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Text(state.profileQuery)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.primary)
+                        }
                         .padding(.horizontal, 16)
                         .padding(.top, 6)
+                        .padding(.bottom, 2)
+                    }
 
-                    ForEach(browser.profiles) { profile in
-                        Text(profile.displayName)
-                            .font(.system(size: 12))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 3)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onSelect(browser, profile)
+                    ForEach(Array(state.filteredProfiles.enumerated()), id: \.element.id) { index, profile in
+                        HStack(spacing: 8) {
+                            Text(profile.displayName)
+                                .font(.system(size: 12))
+                            Spacer()
+                            if index < 9 {
+                                KeyCap("\(index + 1)")
                             }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(index == state.selectedProfileIndex ? Color.accentColor.opacity(0.2) : Color.clear)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onSelect(state.selectedBrowser!, profile)
+                        }
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.vertical, 6)
             }
 
             // Hint
             HStack(spacing: 12) {
                 KeyCap("←→")
-                Text("navigate")
+                Text("browser")
+                if state.hasProfiles {
+                    KeyCap("↑↓")
+                    Text("profile")
+                    KeyCap("type")
+                    Text("filter")
+                }
                 KeyCap("⏎")
                 Text("open")
                 KeyCap("esc")
@@ -100,7 +125,7 @@ struct BrowserCell: View {
                 .lineLimit(1)
 
             if let n = shortcutNumber {
-                KeyCap("⌘\(n)")
+                KeyCap("\(n)")
             }
         }
         .padding(8)
