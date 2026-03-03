@@ -20,6 +20,7 @@ enum BrowserDiscovery {
 
         for bundleId in handlers {
             let lowered = bundleId.lowercased()
+            guard lowered != "com.punt.browser-picker" else { continue }
             guard !seen.contains(lowered) else { continue }
             seen.insert(lowered)
 
