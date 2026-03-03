@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Main gradient - deep purple to electric blue -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C3CE1"/>
+      <stop offset="50%" stop-color="#4F6BED"/>
+      <stop offset="100%" stop-color="#18BFFF"/>
+    </linearGradient>
+    <!-- Highlight shimmer -->
+    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="white" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="white" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Arrow accent gradient -->
+    <linearGradient id="arrow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD166"/>
+      <stop offset="100%" stop-color="#FF6B6B"/>
+    </linearGradient>
+    <!-- Shadow for depth -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+    <!-- Inner glow on the routing paths -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bg)"/>
+
+  <!-- Subtle shine overlay -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#shine)"/>
+
+  <!-- Central dot - the "origin" URL -->
+  <circle cx="160" cy="256" r="36" fill="white" opacity="0.95" filter="url(#shadow)"/>
+  <circle cx="160" cy="256" r="20" fill="url(#bg)"/>
+
+  <!-- Three routing paths fanning out -->
+  <g filter="url(#glow)">
+    <!-- Top path -->
+    <path d="M196 244 Q260 200 320 160" stroke="white" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
+    <!-- Middle path -->
+    <path d="M196 256 Q260 256 330 256" stroke="white" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
+    <!-- Bottom path -->
+    <path d="M196 268 Q260 312 320 352" stroke="white" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
+  </g>
+
+  <!-- Three destination browser dots -->
+  <circle cx="348" cy="148" r="28" fill="white" opacity="0.25"/>
+  <circle cx="348" cy="148" r="18" fill="white" opacity="0.85"/>
+
+  <circle cx="358" cy="256" r="28" fill="white" opacity="0.25"/>
+  <circle cx="358" cy="256" r="18" fill="white" opacity="0.85"/>
+
+  <circle cx="348" cy="364" r="28" fill="white" opacity="0.25"/>
+  <circle cx="348" cy="364" r="18" fill="white" opacity="0.85"/>
+
+  <!-- Punt kick arrow - the hero element -->
+  <g filter="url(#shadow)">
+    <path d="M370 148 L400 148 L388 132 M400 148 L388 164" stroke="url(#arrow)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M380 256 L410 256 L398 240 M410 256 L398 272" stroke="url(#arrow)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M370 364 L400 364 L388 348 M400 364 L388 380" stroke="url(#arrow)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
