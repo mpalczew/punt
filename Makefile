@@ -7,7 +7,7 @@ VERSION     := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionStr
 
 SIGNING_IDENTITY ?= Developer ID Application: Michal Palczewski (FS3CWH8867)
 
-.PHONY: build build-universal run clean install app
+.PHONY: build build-universal run clean install app restart
 
 build:
 	swift build -c release
@@ -33,9 +33,16 @@ run: build
 	open $(APP_BUNDLE)
 
 install: build
-	rm -rf /Applications/$(APP_NAME).app
-	cp -R $(APP_BUNDLE) /Applications/$(APP_NAME).app
-	@echo "Installed $(APP_NAME).app to /Applications"
+	@was_running=false; \
+	if pgrep -x $(APP_NAME) >/dev/null 2>&1; then was_running=true; pkill -x $(APP_NAME); sleep 0.5; fi; \
+	rm -rf /Applications/$(APP_NAME).app; \
+	cp -R $(APP_BUNDLE) /Applications/$(APP_NAME).app; \
+	echo "Installed $(APP_NAME).app to /Applications"; \
+	if $$was_running; then open /Applications/$(APP_NAME).app; echo "Restarted $(APP_NAME)"; fi
+
+restart:
+	@pkill -x $(APP_NAME) 2>/dev/null; sleep 0.5; open /Applications/$(APP_NAME).app
+	@echo "Restarted $(APP_NAME)"
 
 clean:
 	swift package clean
