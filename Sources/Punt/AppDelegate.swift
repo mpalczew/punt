@@ -57,6 +57,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - URL Handling
 
+    func application(_ sender: NSApplication, open urls: [URL]) {
+        guard let url = urls.first else { return }
+        showPicker(for: url)
+    }
+
     @objc private func handleURLEvent(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
         guard let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
               let url = URL(string: urlString) else { return }
