@@ -10,6 +10,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMonitor: Any?
     private var clickMonitor: Any?
     private let autoUpdater = AutoUpdater()
+    private var urlLaunched = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -38,6 +39,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarManager.onSetDefault = { [weak self] in self?.promptSetDefaultBrowser() }
         menuBarManager.onShowSettings = { [weak self] in self?.showSettings() }
         menuBarManager.onQuit = { NSApp.terminate(nil) }
+        menuBarManager.onReopenURL = { [weak self] url in self?.showPicker(for: url) }
+        menuBarManager.urlHistoryProvider = { [weak self] in self?.pickerState.urlHistory() ?? [] }
         menuBarManager.setup()
 
         registerLocalMonitor()
@@ -59,6 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ sender: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
+        pickerState.recordURLHistory(url)
         showPicker(for: url)
     }
 
@@ -72,6 +76,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             cleanedURL = url
         }
+
+        pickerState.recordURLHistory(cleanedURL)
 
         let mode = RuleEngine.mode
         if mode == .rulesFirst || mode == .rulesOnly {
@@ -95,6 +101,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPicker(for url: URL) {
+        urlLaunched = false
         pickerState.url = url
         pickerState.loadBrowsers()
 
@@ -107,13 +114,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func hidePanel() {
-        panel.orderOut(nil)
-        NSApp.hide(nil)
+        if !urlLaunched && pickerState.url != nil {
+            animatePanelToMenuBar()
+        } else {
+            panel.orderOut(nil)
+            NSApp.hide(nil)
+        }
+    }
+
+    private func animatePanelToMenuBar() {
+        let target = menuBarManager.statusItemFrame
+        let originalFrame = panel.frame
+
+        guard !target.isEmpty else {
+            panel.orderOut(nil)
+            NSApp.hide(nil)
+            return
+        }
+
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().setFrame(target, display: true)
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            guard let self = self else { return }
+            self.panel.orderOut(nil)
+            self.panel.alphaValue = 1
+            self.panel.setFrame(originalFrame, display: false)
+            NSApp.hide(nil)
+        })
     }
 
     private func launchURL(in browser: Browser, profile: BrowserProfile?) {
         guard let url = pickerState.url else { return }
         pickerState.recordUsage(browser, profile: profile)
+        urlLaunched = true
         hidePanel()
         BrowserLauncher.open(url: url, in: browser, profile: profile)
     }

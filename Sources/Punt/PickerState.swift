@@ -14,7 +14,14 @@ class PickerState: ObservableObject {
     private static let recencyKey = "punt_recency"
     private static let profileRecencyKey = "punt_profile_recency"
     private static let hiddenKey = "punt_hidden_browsers"
+    private static let urlHistoryKey = "punt_url_history"
     private static let maxRecent = 20
+    private static let maxURLHistory = 15
+
+    struct URLHistoryEntry: Codable {
+        let urlString: String
+        let timestamp: Date
+    }
 
     var visibleBrowsers: [Browser] {
         browsers.filter { !$0.isHidden }
@@ -170,6 +177,26 @@ class PickerState: ObservableObject {
         if let idx = browsers.firstIndex(where: { $0.id == browserId }) {
             browsers[idx].isHidden = hidden
         }
+    }
+
+    // MARK: - URL History
+
+    func recordURLHistory(_ url: URL) {
+        var entries = urlHistory()
+        entries.removeAll { $0.urlString == url.absoluteString }
+        entries.insert(URLHistoryEntry(urlString: url.absoluteString, timestamp: Date()), at: 0)
+        if entries.count > Self.maxURLHistory {
+            entries = Array(entries.prefix(Self.maxURLHistory))
+        }
+        if let data = try? JSONEncoder().encode(entries) {
+            UserDefaults.standard.set(data, forKey: Self.urlHistoryKey)
+        }
+    }
+
+    func urlHistory() -> [URLHistoryEntry] {
+        guard let data = UserDefaults.standard.data(forKey: Self.urlHistoryKey),
+              let list = try? JSONDecoder().decode([URLHistoryEntry].self, from: data) else { return [] }
+        return list
     }
 
     // MARK: - Private
