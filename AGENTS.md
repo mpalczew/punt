@@ -21,7 +21,8 @@
 
 ## Don'ts
 - Do NOT use `swift run` — this is a macOS GUI app that requires the `.app` bundle.
-- Do NOT manually update `Info.plist` version or `Casks/punt.rb` — CI handles these.
+- Do NOT start GitHub macOS runners / re-add macOS CI without explicit approval — releases are local.
+- Do NOT hand-edit release version fields — `scripts/release.sh` updates `Info.plist` and casks.
 - Do NOT use @Observable — requires macOS 14+, we target macOS 13+.
 
 ## Build & Run
@@ -29,3 +30,10 @@
 - `make run` builds + launches the app.
 - `make install` builds + copies to /Applications.
 - `make clean` removes artifacts.
+
+## Release (local only)
+- No GitHub Actions macOS jobs. Ship from a signed-in Mac:
+  `scripts/release.sh X.Y.Z`
+- Flow: changelog → version bump → universal build → codesign → notarytool → staple → zip → commit/tag/push → `gh release` → Homebrew tap.
+- Notary: `export NOTARY_PROFILE=…` (from `xcrun notarytool store-credentials`) or `NOTARIZE_APPLE_ID` + `NOTARIZE_PASSWORD` + `NOTARIZE_TEAM_ID`.
+- Optional: `SKIP_PUSH=1` (artifacts only), `SKIP_HOMEBREW=1`.

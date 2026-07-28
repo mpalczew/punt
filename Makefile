@@ -7,7 +7,7 @@ VERSION     := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionStr
 
 SIGNING_IDENTITY ?= Developer ID Application: Michal Palczewski (FS3CWH8867)
 
-.PHONY: build build-universal run clean install app restart
+.PHONY: build build-universal run clean install app restart sign release-universal
 
 build:
 	swift build -c release
@@ -76,6 +76,8 @@ sign:
 		$(APP_BUNDLE)
 	codesign --verify --verbose $(APP_BUNDLE)
 
+# Unsigned zip helper only. Full ship path: scripts/release.sh X.Y.Z
 release-universal: build-universal sign
 	cd $(BUILD_DIR) && zip -r -y $(APP_NAME)-$(VERSION)-universal.zip $(APP_NAME).app
 	@echo "Created $(BUILD_DIR)/$(APP_NAME)-$(VERSION)-universal.zip"
+	@echo "Note: this zip is not notarized. Use scripts/release.sh for a real release."
