@@ -11,6 +11,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var clickMonitor: Any?
     private let autoUpdater = AutoUpdater()
     private var urlLaunched = false
+    /// Document/URL opens can arrive before didFinishLaunching finishes wiring UI.
+    private var isReady = false
+    private var pendingURLs: [URL] = []
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -49,6 +52,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         autoUpdater.isPanelHidden = { [weak self] in !(self?.panel.isVisible ?? false) }
         autoUpdater.startMonitoring()
 
+        isReady = true
+        let queued = pendingURLs
+        pendingURLs.removeAll()
+        for url in queued {
+            receive(url)
+        }
+
         if !UserDefaults.standard.bool(forKey: "punt_has_launched") {
             UserDefaults.standard.set(true, forKey: "punt_has_launched")
             enableLoginItem()
@@ -61,17 +71,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - URL Handling
 
     func application(_ sender: NSApplication, open urls: [URL]) {
-        guard let url = urls.first else { return }
-        pickerState.recordURLHistory(url)
-        showPicker(for: url)
+        for url in urls {
+            receive(url)
+        }
     }
 
     @objc private func handleURLEvent(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
         guard let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
               let url = URL(string: urlString) else { return }
+        receive(url)
+    }
+
+    private func receive(_ url: URL) {
+        if !isReady {
+            pendingURLs.append(url)
+            return
+        }
 
         let cleanedURL: URL
-        if UserDefaults.standard.bool(forKey: "punt_strip_tracking") {
+        if url.isFileURL {
+            cleanedURL = url
+        } else if UserDefaults.standard.bool(forKey: "punt_strip_tracking") {
             cleanedURL = URLCleaner.clean(url)
         } else {
             cleanedURL = url
@@ -79,21 +99,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         pickerState.recordURLHistory(cleanedURL)
 
-        let mode = RuleEngine.mode
-        if mode == .rulesFirst || mode == .rulesOnly {
-            if let rule = RuleEngine.match(url: cleanedURL) {
-                if let browser = pickerState.browsers.first(where: { $0.id == rule.browserID }) {
-                    let profile = rule.profileID.flatMap { pid in browser.profiles.first(where: { $0.id == pid }) }
-                    pickerState.recordUsage(browser, profile: profile)
-                    BrowserLauncher.open(url: cleanedURL, in: browser, profile: profile)
+        // Rules only apply to networked URLs (need a host). Local files always pick.
+        if !cleanedURL.isFileURL {
+            let mode = RuleEngine.mode
+            if mode == .rulesFirst || mode == .rulesOnly {
+                if let rule = RuleEngine.match(url: cleanedURL) {
+                    if let browser = pickerState.browsers.first(where: { $0.id == rule.browserID }) {
+                        let profile = rule.profileID.flatMap { pid in browser.profiles.first(where: { $0.id == pid }) }
+                        pickerState.recordUsage(browser, profile: profile)
+                        BrowserLauncher.open(url: cleanedURL, in: browser, profile: profile)
+                        return
+                    }
+                }
+                if mode == .rulesOnly {
+                    if let browser = pickerState.visibleBrowsers.first {
+                        BrowserLauncher.open(url: cleanedURL, in: browser)
+                    }
                     return
                 }
-            }
-            if mode == .rulesOnly {
-                if let browser = pickerState.visibleBrowsers.first {
-                    BrowserLauncher.open(url: cleanedURL, in: browser)
-                }
-                return
             }
         }
 
@@ -109,6 +132,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let width = CGFloat(max(browserCount, 3)) * 80 + 32
         panel.setContentSize(NSSize(width: min(width, 800), height: 200))
         panel.centerOnScreen()
+        // orderFrontRegardless: LSUIElement + nonactivatingPanel often no-ops makeKeyAndOrderFront
+        // when the open comes from another process (Terminal, VS Code task, etc.).
+        panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
