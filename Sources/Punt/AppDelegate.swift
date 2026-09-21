@@ -3,6 +3,7 @@ import ServiceManagement
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private let instanceCoordinator = SingleInstanceCoordinator()
     private var panel: PickerPanel!
     private var pickerState: PickerState!
     private var menuBarManager: MenuBarManager!
@@ -14,8 +15,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Document/URL opens can arrive before didFinishLaunching finishes wiring UI.
     private var isReady = false
     private var pendingURLs: [URL] = []
+    private var isPrimaryInstance = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        switch instanceCoordinator.claim() {
+        case .acquired:
+            isPrimaryInstance = true
+            instanceCoordinator.onForwardedURL = { [weak self] url in
+                self?.receive(url)
+            }
+        case .alreadyRunning:
+            NSLog("Punt: another instance is already running")
+        case .unavailable(let error):
+            NSLog("Punt: unable to claim single-instance lock: \(error)")
+            isPrimaryInstance = true
+        }
+
         NSAppleEventManager.shared().setEventHandler(
             self,
             andSelector: #selector(handleURLEvent(_:withReply:)),
@@ -25,6 +40,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard isPrimaryInstance else {
+            instanceCoordinator.forward(urls: pendingURLs)
+            NSApp.terminate(nil)
+            return
+        }
+
         pickerState = PickerState()
         pickerState.loadBrowsers()
 
@@ -50,7 +71,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         registerClickOutsideMonitor()
 
         autoUpdater.isPanelHidden = { [weak self] in !(self?.panel.isVisible ?? false) }
-        autoUpdater.startMonitoring()
+        if HomebrewDetector.isInstalledApplication {
+            autoUpdater.startMonitoring()
+        } else {
+            NSLog("Punt: auto-update disabled for development build")
+        }
 
         isReady = true
         let queued = pendingURLs
@@ -59,9 +84,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             receive(url)
         }
 
+        if HomebrewDetector.isInstalledApplication {
+            enableLoginItem()
+        }
+
         if !UserDefaults.standard.bool(forKey: "punt_has_launched") {
             UserDefaults.standard.set(true, forKey: "punt_has_launched")
-            enableLoginItem()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.promptSetDefaultBrowser()
             }
@@ -71,6 +99,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - URL Handling
 
     func application(_ sender: NSApplication, open urls: [URL]) {
+        guard isPrimaryInstance else {
+            instanceCoordinator.forward(urls: urls)
+            NSApp.terminate(nil)
+            return
+        }
         for url in urls {
             receive(url)
         }
@@ -79,6 +112,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleURLEvent(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
         guard let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
               let url = URL(string: urlString) else { return }
+
+        guard isPrimaryInstance else {
+            instanceCoordinator.forward(urls: [url])
+            NSApp.terminate(nil)
+            return
+        }
         receive(url)
     }
 

@@ -1,6 +1,13 @@
 import Foundation
 
 enum HomebrewDetector {
+    private static let installedApplicationPath = "/Applications/Punt.app"
+
+    static var isInstalledApplication: Bool {
+        let bundlePath = Bundle.main.bundleURL.standardizedFileURL.path
+        return bundlePath == installedApplicationPath || isHomebrewManaged
+    }
+
     static var isHomebrewManaged: Bool {
         let bundlePath = Bundle.main.bundlePath
         let caskroomPaths = [
