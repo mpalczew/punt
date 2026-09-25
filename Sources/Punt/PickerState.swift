@@ -44,6 +44,11 @@ class PickerState: ObservableObject {
         selectedBrowser?.profiles.isEmpty == false
     }
 
+    var profileAccessBlocked: Bool {
+        guard let browser = selectedBrowser else { return false }
+        return browser.profilesNeedAccess && browser.profiles.isEmpty
+    }
+
     func loadBrowsers() {
         var discovered = BrowserDiscovery.discoverBrowsers()
         let hidden = hiddenBrowserIds()

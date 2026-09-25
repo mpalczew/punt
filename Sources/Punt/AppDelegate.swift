@@ -55,7 +55,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let pickerView = PickerView(
             state: pickerState,
             onSelect: { [weak self] browser, profile in self?.launchURL(in: browser, profile: profile) },
-            onDismiss: { [weak self] in self?.hidePanel() }
+            onDismiss: { [weak self] in self?.hidePanel() },
+            onLayoutChange: { [weak self] in self?.fitPicker() },
+            onRequestAccess: { [weak self] in self?.promptForFullDiskAccess() }
         )
         panel.contentView = NSHostingView(rootView: pickerView)
 
@@ -167,15 +169,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         pickerState.url = url
         pickerState.loadBrowsers()
 
-        let browserCount = pickerState.visibleBrowsers.count
-        let width = CGFloat(max(browserCount, 3)) * 80 + 32
-        panel.setContentSize(NSSize(width: min(width, 800), height: 200))
-        panel.centerOnScreen()
+        fitPicker()
+        DispatchQueue.main.async { [weak self] in self?.fitPicker() }
         // orderFrontRegardless: LSUIElement + nonactivatingPanel often no-ops makeKeyAndOrderFront
         // when the open comes from another process (Terminal, VS Code task, etc.).
         panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func promptForFullDiskAccess() {
+        let alert = NSAlert()
+        alert.messageText = "Punt needs Full Disk Access"
+        alert.informativeText = "macOS is hiding browser profiles. Full Disk Access opens next, with Punt in the list. Turn Punt on, then quit and reopen Punt."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open Full Disk Access")
+        alert.addButton(withTitle: "Not Now")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        FullDiskAccess.openSettings()
+    }
+
+    private func fitPicker() {
+        panel.fitToContent()
+        panel.centerOnScreen()
     }
 
     private func hidePanel() {
@@ -294,6 +311,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func registerClickOutsideMonitor() {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             guard let self = self, self.panel.isVisible else { return }
+            if self.panel.containsMouse(NSEvent.mouseLocation) { return }
             self.hidePanel()
         }
     }

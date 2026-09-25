@@ -6,13 +6,16 @@ struct Browser: Identifiable, Codable, Hashable {
     let url: URL             // path to .app bundle
     var profiles: [BrowserProfile]
     var isHidden: Bool
+    /// macOS blocked the read of this browser's profile list.
+    var profilesNeedAccess: Bool
 
-    init(id: String, name: String, url: URL, profiles: [BrowserProfile] = [], isHidden: Bool = false) {
+    init(id: String, name: String, url: URL, profiles: [BrowserProfile] = [], isHidden: Bool = false, profilesNeedAccess: Bool = false) {
         self.id = id
         self.name = name
         self.url = url
         self.profiles = profiles
         self.isHidden = isHidden
+        self.profilesNeedAccess = profilesNeedAccess
     }
 
     static func == (lhs: Browser, rhs: Browser) -> Bool {

@@ -18,6 +18,8 @@ app:
 	cp $(BUILD_DIR)/release/$(APP_NAME) $(MACOS_DIR)/$(APP_NAME)
 	cp Resources/Info.plist $(CONTENTS)/Info.plist
 	cp Resources/AppIcon.icns $(CONTENTS)/Resources/AppIcon.icns
+	# Developer ID so Privacy settings can show a stable Punt row.
+	codesign --force --sign "$(SIGNING_IDENTITY)" $(APP_BUNDLE)
 
 build-universal:
 	swift build -c release --arch arm64

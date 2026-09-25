@@ -28,4 +28,19 @@ class PickerPanel: NSPanel {
         let y = screenFrame.midY - frame.height / 2
         setFrameOrigin(NSPoint(x: x, y: y))
     }
+
+    func fitToContent() {
+        guard let host = contentView else { return }
+        host.layoutSubtreeIfNeeded()
+        var size = host.fittingSize
+        guard size.width > 1, size.height > 1 else { return }
+        let bounds = (screen ?? NSScreen.main)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
+        size.width = min(max(size.width, 320), min(720, bounds.width - 48))
+        size.height = min(max(size.height, 80), bounds.height - 48)
+        setContentSize(size)
+    }
+
+    func containsMouse(_ point: NSPoint) -> Bool {
+        frame.contains(point)
+    }
 }

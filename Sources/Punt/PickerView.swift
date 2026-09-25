@@ -5,6 +5,10 @@ struct PickerView: View {
     @ObservedObject var state: PickerState
     let onSelect: (Browser, BrowserProfile?) -> Void
     let onDismiss: () -> Void
+    let onLayoutChange: () -> Void
+    let onRequestAccess: () -> Void
+
+    private static let reservedChromeHeight: CGFloat = 240
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,12 +41,34 @@ struct PickerView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
 
-            // Profiles for selected browser (if any)
             if state.hasProfiles {
                 Divider()
                     .padding(.horizontal, 12)
 
-                VStack(alignment: .leading, spacing: 2) {
+                ScrollView {
+                    profileList
+                }
+                .frame(maxHeight: profileListMaxHeight)
+            } else if state.profileAccessBlocked, let browser = state.selectedBrowser {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                ProfileAccessNotice(browserName: browser.name, onOpenSettings: onRequestAccess)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+        }
+        .frame(minWidth: 280)
+        .background(VisualEffectBlur())
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onChange(of: state.selectedIndex) { _ in onLayoutChange() }
+        .onChange(of: state.profileQuery) { _ in onLayoutChange() }
+        .onChange(of: state.filteredProfiles.count) { _ in onLayoutChange() }
+        .onChange(of: state.profileAccessBlocked) { _ in onLayoutChange() }
+    }
+
+    private var profileList: some View {
+        VStack(alignment: .leading, spacing: 2) {
                     // Search field for profiles
                     if !state.profileQuery.isEmpty {
                         HStack(spacing: 4) {
@@ -76,12 +102,12 @@ struct PickerView: View {
                         }
                     }
                 }
-                .padding(.vertical, 6)
-            }
-        }
-        .frame(minWidth: 200)
-        .background(VisualEffectBlur())
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 6)
+    }
+
+    private var profileListMaxHeight: CGFloat {
+        let screen = NSScreen.main?.visibleFrame.height ?? 800
+        return max(160, screen - Self.reservedChromeHeight)
     }
 }
 

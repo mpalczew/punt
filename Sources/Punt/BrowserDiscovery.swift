@@ -28,15 +28,19 @@ enum BrowserDiscovery {
             let name = displayName(for: appURL)
             var profiles: [BrowserProfile] = []
 
+            var profilesNeedAccess = false
             if chromiumBundleIds.contains(bundleId) {
-                profiles = discoverChromiumProfiles(bundleId: bundleId)
+                let found = discoverChromiumProfiles(bundleId: bundleId)
+                profiles = found.profiles
+                profilesNeedAccess = found.needsAccess
             }
 
             browsers.append(Browser(
                 id: bundleId,
                 name: name,
                 url: appURL,
-                profiles: profiles
+                profiles: profiles,
+                profilesNeedAccess: profilesNeedAccess
             ))
         }
 
@@ -52,15 +56,20 @@ enum BrowserDiscovery {
         return appURL.deletingPathExtension().lastPathComponent
     }
 
-    private static func discoverChromiumProfiles(bundleId: String) -> [BrowserProfile] {
-        guard let supportDir = chromiumSupportDir(for: bundleId) else { return [] }
+    private static func discoverChromiumProfiles(bundleId: String) -> (profiles: [BrowserProfile], needsAccess: Bool) {
+        guard let supportDir = chromiumSupportDir(for: bundleId) else { return ([], false) }
 
         let localStatePath = supportDir.appendingPathComponent("Local State")
-        guard let data = try? Data(contentsOf: localStatePath),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let data: Data
+        do {
+            data = try Data(contentsOf: localStatePath)
+        } catch {
+            return ([], isAccessDenied(error))
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let profileInfo = json["profile"] as? [String: Any],
               let infoCache = profileInfo["info_cache"] as? [String: Any] else {
-            return []
+            return ([], false)
         }
 
         // First pass: collect raw names to detect collisions
@@ -100,7 +109,22 @@ enum BrowserDiscovery {
             ))
         }
 
-        return profiles.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        let sorted = profiles.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        return (sorted, false)
+    }
+
+    private static func isAccessDenied(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain && nsError.code == NSFileReadNoPermissionError {
+            return true
+        }
+        if nsError.domain == NSPOSIXErrorDomain && (nsError.code == EPERM || nsError.code == EACCES) {
+            return true
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isAccessDenied(underlying)
+        }
+        return false
     }
 
     private static func chromiumSupportDir(for bundleId: String) -> URL? {
@@ -120,7 +144,6 @@ enum BrowserDiscovery {
         default: return nil
         }
 
-        let dir = appSupport.appendingPathComponent(dirName)
-        return FileManager.default.fileExists(atPath: dir.path) ? dir : nil
+        return appSupport.appendingPathComponent(dirName)
     }
 }

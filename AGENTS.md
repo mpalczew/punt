@@ -13,6 +13,7 @@
 - URL events handled via NSAppleEventManager in applicationWillFinishLaunching.
 - UserDefaults for config storage (JSON-encoded).
 - Browser discovery via LSCopyAllHandlersForURLScheme + Chromium profile parsing.
+- macOS 27 hides Chromium profiles without Full Disk Access. Open TCC.db before AppKit, and ship a Developer ID signature, or Punt never appears in that list.
 
 ## Constants & Magic Numbers
 - Extract behavioral constants (timing, limits) as `static let` on the owning type — no global Constants.swift.
