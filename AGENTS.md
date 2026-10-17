@@ -38,3 +38,6 @@
 - Flow: changelog → version bump → universal build → codesign → notarytool → staple → zip → commit/tag/push → `gh release` → Homebrew tap.
 - Notary: `export NOTARY_PROFILE=…` (from `xcrun notarytool store-credentials`) or `NOTARIZE_APPLE_ID` + `NOTARIZE_PASSWORD` + `NOTARIZE_TEAM_ID`.
 - Optional: `SKIP_PUSH=1` (artifacts only), `SKIP_HOMEBREW=1`.
+
+## Git
+- Commit and push directly to `main`. No branches, no PRs.
