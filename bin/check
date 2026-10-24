@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Usage: bin/check [all|<gate>]   gates: build
+# Usage: bin/check [all|<gate>]   gates: build harness (harness always runs)
 # No argument: run gates whose paths changed against main (working tree included).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+git config core.hooksPath >/dev/null 2>&1 || git config core.hooksPath .githooks
 
-GATES=(build)
+GATES=(build harness)
 build_paths=(Sources Package.swift Package.resolved)
 
 step() {
@@ -19,6 +20,19 @@ step() {
   fi
 }
 
+harness_bad() {
+  git ls-files .claude | rg -v '^\.claude/skills$' || true
+  if [ -e .claude/skills ] || [ -L .claude/skills ]; then
+    [ -L .claude/skills ] && [ "$(readlink .claude/skills)" = ../.agents/skills ] || echo .claude/skills
+  fi
+}
+gate_harness() {
+  local bad
+  bad=$(harness_bad)
+  if [ -n "$bad" ]; then printf '%s\n' "$bad"; exit 1; fi
+  echo "✓ harness: .claude holds only the skills link"
+}
+
 gate_build() { step "build: swift build" swift build; }
 
 changed() {
@@ -30,7 +44,9 @@ arg=${1:-}
 case $arg in
   all) for g in "${GATES[@]}"; do "gate_$g"; done ;;
   "")
+    gate_harness
     for g in "${GATES[@]}"; do
+      [[ $g == harness ]] && continue
       p="${g}_paths"
       changed "$p" && "gate_$g"
     done
