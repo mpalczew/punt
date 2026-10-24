@@ -249,35 +249,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             guard flags.subtracting([.capsLock, .numericPad, .function]).isEmpty else { return event }
 
-            switch event.keyCode {
-            case 53:
+            switch Key(rawValue: event.keyCode) {
+            case .escape:
                 if !self.pickerState.profileQuery.isEmpty {
                     self.pickerState.profileQuery = ""
                 } else {
                     self.hidePanel()
                 }
                 return nil
-            case 36:
+            case .returnKey:
                 if let browser = self.pickerState.selectedBrowser {
                     self.launchURL(in: browser, profile: self.pickerState.selectedProfile)
                 }
                 return nil
-            case 123:
+            case .left:
                 self.pickerState.moveLeft()
                 return nil
-            case 124:
+            case .right:
                 self.pickerState.moveRight()
                 return nil
-            case 125:
+            case .down:
                 self.pickerState.moveDown()
                 return nil
-            case 126:
+            case .up:
                 self.pickerState.moveUp()
                 return nil
-            case 51:
+            case .delete:
                 self.pickerState.backspaceProfileQuery()
                 return nil
-            default:
+            case nil:
                 break
             }
 

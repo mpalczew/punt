@@ -5,7 +5,7 @@ class PickerState: ObservableObject {
     @Published var url: URL?
     @Published var browsers: [Browser] = []
     @Published var selectedIndex: Int = 0
-    @Published var selectedProfileIndex: Int = -1
+    @Published var selectedProfileIndex: Int?
     @Published var profileQuery: String = "" {
         didSet { updateFilteredProfiles() }
     }
@@ -34,9 +34,8 @@ class PickerState: ObservableObject {
     }
 
     var selectedProfile: BrowserProfile? {
-        guard selectedProfileIndex >= 0,
-              selectedProfileIndex < filteredProfiles.count else { return nil }
-        return filteredProfiles[selectedProfileIndex]
+        guard let index = selectedProfileIndex, filteredProfiles.indices.contains(index) else { return nil }
+        return filteredProfiles[index]
     }
 
     var hasProfiles: Bool {
@@ -69,7 +68,7 @@ class PickerState: ObservableObject {
             return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
         selectedIndex = 0
-        selectedProfileIndex = -1
+        selectedProfileIndex = nil
         profileQuery = ""
         updateFilteredProfiles()
     }
@@ -105,15 +104,15 @@ class PickerState: ObservableObject {
 
     func moveUp() {
         guard hasProfiles else { return }
-        if selectedProfileIndex > -1 {
-            selectedProfileIndex -= 1
-        }
+        guard let index = selectedProfileIndex else { return }
+        selectedProfileIndex = index == 0 ? nil : index - 1
     }
 
     func moveDown() {
         guard hasProfiles else { return }
-        if selectedProfileIndex < filteredProfiles.count - 1 {
-            selectedProfileIndex += 1
+        let next = (selectedProfileIndex ?? -1) + 1
+        if next < filteredProfiles.count {
+            selectedProfileIndex = next
         }
     }
 
@@ -129,7 +128,7 @@ class PickerState: ObservableObject {
 
     private func resetProfileSelection() {
         profileQuery = ""
-        selectedProfileIndex = -1
+        selectedProfileIndex = nil
         updateFilteredProfiles()
     }
 
@@ -149,7 +148,7 @@ class PickerState: ObservableObject {
         if !filteredProfiles.isEmpty && !profileQuery.isEmpty {
             selectedProfileIndex = 0
         } else if profileQuery.isEmpty {
-            selectedProfileIndex = -1
+            selectedProfileIndex = nil
         }
     }
 
