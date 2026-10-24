@@ -86,48 +86,48 @@ class MenuBarManager: NSObject, NSMenuDelegate {
     }
 
     private func makeMenuBarIcon() -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipped: false) { rect in
-            let color = NSColor.black
-
-            let dotRect = NSRect(x: 1, y: 7, width: 4, height: 4)
-            let dot = NSBezierPath(ovalIn: dotRect)
-            color.setFill()
-            dot.fill()
-
-            let path = NSBezierPath()
-            path.lineWidth = 1.5
-            path.lineCapStyle = .round
-            color.setStroke()
-
-            path.move(to: NSPoint(x: 5, y: 10))
-            path.line(to: NSPoint(x: 14, y: 15))
-            path.move(to: NSPoint(x: 5, y: 9))
-            path.line(to: NSPoint(x: 15, y: 9))
-            path.move(to: NSPoint(x: 5, y: 8))
-            path.line(to: NSPoint(x: 14, y: 3))
-            path.stroke()
-
-            let arrows = NSBezierPath()
-            arrows.lineWidth = 1.2
-            arrows.lineCapStyle = .round
-            arrows.lineJoinStyle = .round
-            color.setStroke()
-
-            arrows.move(to: NSPoint(x: 11, y: 16))
-            arrows.line(to: NSPoint(x: 14, y: 15))
-            arrows.line(to: NSPoint(x: 12, y: 12.5))
-            arrows.move(to: NSPoint(x: 12.5, y: 12))
-            arrows.line(to: NSPoint(x: 15, y: 9))
-            arrows.line(to: NSPoint(x: 12.5, y: 6))
-            arrows.move(to: NSPoint(x: 11, y: 2))
-            arrows.line(to: NSPoint(x: 14, y: 3))
-            arrows.line(to: NSPoint(x: 12, y: 5.5))
-            arrows.stroke()
-
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+            NSColor.black.set()
+            Self.drawDot()
+            Self.drawLines()
+            Self.drawArrowheads()
             return true
         }
         image.isTemplate = true
         return image
+    }
+
+    private static func drawDot() {
+        NSBezierPath(ovalIn: NSRect(x: 1, y: 7, width: 4, height: 4)).fill()
+    }
+
+    private static func drawLines() {
+        let path = NSBezierPath()
+        path.lineWidth = 1.5
+        path.lineCapStyle = .round
+        path.move(to: NSPoint(x: 5, y: 10))
+        path.line(to: NSPoint(x: 14, y: 15))
+        path.move(to: NSPoint(x: 5, y: 9))
+        path.line(to: NSPoint(x: 15, y: 9))
+        path.move(to: NSPoint(x: 5, y: 8))
+        path.line(to: NSPoint(x: 14, y: 3))
+        path.stroke()
+    }
+
+    private static func drawArrowheads() {
+        let arrows = NSBezierPath()
+        arrows.lineWidth = 1.2
+        arrows.lineCapStyle = .round
+        arrows.lineJoinStyle = .round
+        arrows.move(to: NSPoint(x: 11, y: 16))
+        arrows.line(to: NSPoint(x: 14, y: 15))
+        arrows.line(to: NSPoint(x: 12, y: 12.5))
+        arrows.move(to: NSPoint(x: 12.5, y: 12))
+        arrows.line(to: NSPoint(x: 15, y: 9))
+        arrows.line(to: NSPoint(x: 12.5, y: 6))
+        arrows.move(to: NSPoint(x: 11, y: 2))
+        arrows.line(to: NSPoint(x: 14, y: 3))
+        arrows.line(to: NSPoint(x: 12, y: 5.5))
+        arrows.stroke()
     }
 }

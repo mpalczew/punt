@@ -89,15 +89,12 @@ enum BrowserDiscovery {
             let name = info["name"] as? String ?? dirName
             let email = info["user_name"] as? String
 
-            let displayName: String
-            if let email = email, (rawNames[name] ?? 0) > 1 {
-                displayName = "\(name) (\(email))"
-            } else if let email = email, name == email {
-                let gaiaName = info["gaia_name"] as? String
-                displayName = gaiaName != nil ? "\(gaiaName!) (\(email))" : email
-            } else {
-                displayName = name
-            }
+            let displayName = profileDisplayName(
+                name: name,
+                email: email,
+                gaiaName: info["gaia_name"] as? String,
+                nameIsShared: (rawNames[name] ?? 0) > 1
+            )
 
             profiles.append(BrowserProfile(
                 browserBundleId: bundleId,
@@ -108,6 +105,13 @@ enum BrowserDiscovery {
 
         let sorted = profiles.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
         return (sorted, false)
+    }
+
+    private static func profileDisplayName(name: String, email: String?, gaiaName: String?, nameIsShared: Bool) -> String {
+        guard let email = email else { return name }
+        if nameIsShared { return "\(name) (\(email))" }
+        if name == email { return gaiaName.map { "\($0) (\(email))" } ?? email }
+        return name
     }
 
     private static func isAccessDenied(_ error: Error) -> Bool {
