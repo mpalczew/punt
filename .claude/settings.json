@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "out=$(\"$CLAUDE_PROJECT_DIR/bin/check\" 2>&1) || { printf '%s\\n' \"$out\" >&2; exit 2; }"
+          }
+        ]
+      }
+    ]
+  }
+}

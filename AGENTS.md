@@ -27,6 +27,7 @@
 - Do NOT use @Observable — requires macOS 14+, we target macOS 13+.
 
 ## Build & Run
+- Run `bin/check` before finishing (gates: build). `bin/check all` runs everything.
 - `make build` compiles + assembles the `.app` bundle.
 - `make run` builds + launches the app.
 - `make install` builds + copies to /Applications.

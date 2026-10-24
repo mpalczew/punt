@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Usage: bin/check [all|<gate>]   gates: build
+# No argument: run gates whose paths changed against main (working tree included).
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+GATES=(build)
+build_paths=(Sources Package.swift Package.resolved)
+
+step() {
+  local label=$1 out
+  shift
+  if out=$("$@" 2>&1); then
+    echo "✓ $label"
+  else
+    printf '%s\n' "$out" | awk 'length < 400'
+    echo "✗ $label" >&2
+    exit 1
+  fi
+}
+
+gate_build() { step "build: swift build" swift build; }
+
+changed() {
+  local -n paths=$1
+  [[ -n $(git diff --name-only main -- "${paths[@]}" 2>/dev/null; git ls-files --others --exclude-standard -- "${paths[@]}") ]]
+}
+
+arg=${1:-}
+case $arg in
+  all) for g in "${GATES[@]}"; do "gate_$g"; done ;;
+  "")
+    for g in "${GATES[@]}"; do
+      p="${g}_paths"
+      changed "$p" && "gate_$g"
+    done
+    exit 0 ;;
+  *)
+    [[ " ${GATES[*]} " == *" $arg "* ]] || { echo "unknown gate: $arg (gates: ${GATES[*]})" >&2; exit 2; }
+    "gate_$arg" ;;
+esac
