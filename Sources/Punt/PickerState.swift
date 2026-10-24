@@ -5,7 +5,7 @@ class PickerState: ObservableObject {
     @Published var url: URL?
     @Published var browsers: [Browser] = []
     @Published var selectedIndex: Int = 0
-    @Published var selectedProfileIndex: Int = -1  // -1 = no profile selected (default browser)
+    @Published var selectedProfileIndex: Int = -1
     @Published var profileQuery: String = "" {
         didSet { updateFilteredProfiles() }
     }
@@ -39,7 +39,6 @@ class PickerState: ObservableObject {
         return filteredProfiles[selectedProfileIndex]
     }
 
-    /// Whether the selected browser has profiles to navigate
     var hasProfiles: Bool {
         selectedBrowser?.profiles.isEmpty == false
     }
@@ -55,7 +54,6 @@ class PickerState: ObservableObject {
         let profRanks = profileRecencyRanks()
         for i in discovered.indices {
             discovered[i].isHidden = hidden.contains(discovered[i].id)
-            // Sort profiles by recency
             discovered[i].profiles.sort { a, b in
                 let ra = profRanks[a.id] ?? Int.max
                 let rb = profRanks[b.id] ?? Int.max
@@ -63,7 +61,6 @@ class PickerState: ObservableObject {
                 return a.displayName.localizedCaseInsensitiveCompare(b.displayName) == .orderedAscending
             }
         }
-        // Sort browsers by recency, then alphabetical
         let ranks = recencyRanks()
         browsers = discovered.sorted { a, b in
             let ra = ranks[a.id] ?? Int.max
@@ -149,7 +146,6 @@ class PickerState: ObservableObject {
                 fuzzyMatch(name: profile.displayName.lowercased(), query: q)
             }
         }
-        // Auto-select first match when typing
         if !filteredProfiles.isEmpty && !profileQuery.isEmpty {
             selectedProfileIndex = 0
         } else if profileQuery.isEmpty {
@@ -184,7 +180,6 @@ class PickerState: ObservableObject {
         }
     }
 
-    // MARK: - URL History
 
     func recordURLHistory(_ url: URL) {
         var entries = urlHistory()
@@ -204,7 +199,6 @@ class PickerState: ObservableObject {
         return list
     }
 
-    // MARK: - Private
 
     private func recordProfileUsage(_ profile: BrowserProfile) {
         var entries = profileRecencyList()

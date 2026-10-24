@@ -98,7 +98,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - URL Handling
 
     func application(_ sender: NSApplication, open urls: [URL]) {
         guard isPrimaryInstance else {
@@ -140,7 +139,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         pickerState.recordURLHistory(cleanedURL)
 
-        // Rules only apply to networked URLs (need a host). Local files always pick.
         if !cleanedURL.isFileURL {
             let mode = RuleEngine.mode
             if mode == .rulesFirst || mode == .rulesOnly {
@@ -236,7 +234,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         BrowserLauncher.open(url: url, in: browser, profile: profile)
     }
 
-    // MARK: - Keyboard
 
     private func registerLocalMonitor() {
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -245,48 +242,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
-            // Cmd+Q to quit
             if event.keyCode == 12 && flags.contains(.command) {
                 NSApp.terminate(nil)
                 return nil
             }
 
-            // Allow arrow keys (they set numericPad + function flags)
             guard flags.subtracting([.capsLock, .numericPad, .function]).isEmpty else { return event }
 
             switch event.keyCode {
-            case 53:  // Escape
+            case 53:
                 if !self.pickerState.profileQuery.isEmpty {
                     self.pickerState.profileQuery = ""
                 } else {
                     self.hidePanel()
                 }
                 return nil
-            case 36:  // Return
+            case 36:
                 if let browser = self.pickerState.selectedBrowser {
                     self.launchURL(in: browser, profile: self.pickerState.selectedProfile)
                 }
                 return nil
-            case 123: // Left arrow
+            case 123:
                 self.pickerState.moveLeft()
                 return nil
-            case 124: // Right arrow
+            case 124:
                 self.pickerState.moveRight()
                 return nil
-            case 125: // Down arrow
+            case 125:
                 self.pickerState.moveDown()
                 return nil
-            case 126: // Up arrow
+            case 126:
                 self.pickerState.moveUp()
                 return nil
-            case 51:  // Backspace
+            case 51:
                 self.pickerState.backspaceProfileQuery()
                 return nil
             default:
                 break
             }
 
-            // Number keys 1-9: always select browser (no conflict with profiles)
             if let digit = self.digitFromKeyCode(event.keyCode), digit >= 1, digit <= 9 {
                 let index = digit - 1
                 let visible = self.pickerState.visibleBrowsers
@@ -296,7 +290,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
 
-            // Letter keys: fuzzy filter profiles (only when browser has profiles)
             if let chars = event.characters, let char = chars.first, char.isLetter {
                 if self.pickerState.hasProfiles {
                     self.pickerState.appendToProfileQuery(char)
@@ -316,7 +309,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Settings
 
     private func showSettings() {
         if let window = settingsWindow {
@@ -340,7 +332,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow = window
     }
 
-    // MARK: - Default Browser
 
     private func promptSetDefaultBrowser() {
         guard let appURL = Bundle.main.bundleURL as URL? else { return }
@@ -356,7 +347,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Login Item
 
     private func enableLoginItem() {
         let service = SMAppService.mainApp
@@ -365,7 +355,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Helpers
 
     private func digitFromKeyCode(_ keyCode: UInt16) -> Int? {
         switch keyCode {

@@ -12,7 +12,6 @@ struct PickerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // URL display
             if let url = state.url {
                 Text(url.host ?? url.absoluteString)
                     .font(.system(size: 12))
@@ -24,7 +23,6 @@ struct PickerView: View {
                     .padding(.bottom, 8)
             }
 
-            // Browser grid
             HStack(spacing: 16) {
                 ForEach(Array(state.visibleBrowsers.enumerated()), id: \.element.id) { index, browser in
                     BrowserCell(
@@ -69,7 +67,6 @@ struct PickerView: View {
 
     private var profileList: some View {
         VStack(alignment: .leading, spacing: 2) {
-                    // Search field for profiles
                     if !state.profileQuery.isEmpty {
                         HStack(spacing: 4) {
                             Image(systemName: "magnifyingglass")

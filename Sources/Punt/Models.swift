@@ -1,12 +1,11 @@
 import Foundation
 
 struct Browser: Identifiable, Codable, Hashable {
-    let id: String           // bundle identifier, e.g. "com.apple.Safari"
+    let id: String
     let name: String
-    let url: URL             // path to .app bundle
+    let url: URL
     var profiles: [BrowserProfile]
     var isHidden: Bool
-    /// macOS blocked the read of this browser's profile list.
     var profilesNeedAccess: Bool
 
     init(id: String, name: String, url: URL, profiles: [BrowserProfile] = [], isHidden: Bool = false, profilesNeedAccess: Bool = false) {
@@ -30,8 +29,8 @@ struct Browser: Identifiable, Codable, Hashable {
 struct BrowserProfile: Identifiable, Codable, Hashable {
     var id: String { "\(browserBundleId)|\(directoryName)" }
     let browserBundleId: String
-    let directoryName: String   // e.g. "Default", "Profile 1"
-    let displayName: String     // parsed from Local State or Preferences
+    let directoryName: String
+    let displayName: String
 
     static func == (lhs: BrowserProfile, rhs: BrowserProfile) -> Bool {
         lhs.id == rhs.id
@@ -44,10 +43,10 @@ struct BrowserProfile: Identifiable, Codable, Hashable {
 
 struct Rule: Identifiable, Codable {
     let id: UUID
-    var domain: String          // e.g. "github.com", or "*" for catch-all
-    var sourceApp: String       // bundle id of source app, or "*"
-    var browserID: String       // Browser.id to route to
-    var profileID: String?      // optional BrowserProfile.id
+    var domain: String
+    var sourceApp: String
+    var browserID: String
+    var profileID: String?
 
     init(id: UUID = UUID(), domain: String, sourceApp: String = "*", browserID: String, profileID: String? = nil) {
         self.id = id
@@ -59,7 +58,7 @@ struct Rule: Identifiable, Codable {
 }
 
 enum PickerMode: String, Codable {
-    case always          // always show picker
-    case rulesFirst      // check rules first, show picker if no match
-    case rulesOnly       // only use rules, fall back to default browser
+    case always
+    case rulesFirst
+    case rulesOnly
 }

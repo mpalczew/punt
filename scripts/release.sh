@@ -45,7 +45,6 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
 }
 
-# --- preflight ---
 
 require_cmd git
 require_cmd make
@@ -63,13 +62,11 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
   die "tag $TAG already exists"
 fi
 
-# Signing identity must exist in keychain
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Michal Palczewski (FS3CWH8867)}"
 if ! security find-identity -v -p codesigning | grep -F "$SIGNING_IDENTITY" >/dev/null; then
   die "codesigning identity not found in keychain: $SIGNING_IDENTITY"
 fi
 
-# Notary: keychain profile or env triple
 NOTARY_ARGS=()
 if [ -n "${NOTARY_PROFILE:-}" ]; then
   NOTARY_ARGS=(--keychain-profile "$NOTARY_PROFILE")
@@ -100,7 +97,6 @@ if [ "${SKIP_PUSH:-}" != "1" ]; then
   gh auth status >/dev/null 2>&1 || die "gh is not authenticated (run: gh auth login)"
 fi
 
-# --- changelog ---
 
 DATE=$(date +%Y-%m-%d)
 HEADER="## [$VERSION] - $DATE"
@@ -109,7 +105,6 @@ if grep -qE "^## \[$VERSION\]" CHANGELOG.md; then
   die "CHANGELOG.md already has a section for $VERSION"
 fi
 
-# Insert new version header after the changelog preamble (before first ## [)
 if grep -qE '^## \[' CHANGELOG.md; then
   sed -i '' "/^## \[/i\\
 \\
@@ -134,7 +129,6 @@ echo "CHANGELOG.md (head):"
 head -25 CHANGELOG.md
 echo ""
 
-# --- version + build ---
 
 echo "Setting Info.plist version to $VERSION..."
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Resources/Info.plist
@@ -169,7 +163,6 @@ SHA256=$(shasum -a 256 "$ZIP_PATH" | awk '{print $1}')
 echo "Zip: $ZIP_PATH"
 echo "SHA256: $SHA256"
 
-# Keep in-repo cask in sync (tap is the install source)
 if [ -f Casks/punt.rb ]; then
   sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/punt.rb
   if grep -q 'sha256 :no_check' Casks/punt.rb; then

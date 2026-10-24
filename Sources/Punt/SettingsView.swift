@@ -29,7 +29,6 @@ struct SettingsView: View {
         .padding()
     }
 
-    // MARK: - General
 
     private var generalTab: some View {
         Form {
@@ -49,7 +48,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Browsers
 
     private var browsersTab: some View {
         List {
@@ -73,7 +71,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Rules
 
     private var rulesTab: some View {
         VStack {
@@ -106,7 +103,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Privacy
 
     private var privacyTab: some View {
         Form {
@@ -121,7 +117,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Helpers
 
     private func browserName(for id: String) -> String {
         state.browsers.first(where: { $0.id == id })?.name ?? id

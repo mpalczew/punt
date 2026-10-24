@@ -9,7 +9,7 @@ enum BrowserDiscovery {
         "com.microsoft.edgemac",
         "com.vivaldi.Vivaldi",
         "com.operasoftware.Opera",
-        "company.thebrowser.Browser",  // Arc
+        "company.thebrowser.Browser",
     ]
 
     static func discoverBrowsers() -> [Browser] {
@@ -72,7 +72,6 @@ enum BrowserDiscovery {
             return ([], false)
         }
 
-        // First pass: collect raw names to detect collisions
         var rawNames: [String: Int] = [:]
         for (_, value) in infoCache {
             guard let info = value as? [String: Any] else { continue }
@@ -90,12 +89,10 @@ enum BrowserDiscovery {
             let name = info["name"] as? String ?? dirName
             let email = info["user_name"] as? String
 
-            // Use "Name (email)" when names collide, otherwise just "Name"
             let displayName: String
             if let email = email, (rawNames[name] ?? 0) > 1 {
                 displayName = "\(name) (\(email))"
             } else if let email = email, name == email {
-                // Name IS the email — use gaia_name if available
                 let gaiaName = info["gaia_name"] as? String
                 displayName = gaiaName != nil ? "\(gaiaName!) (\(email))" : email
             } else {

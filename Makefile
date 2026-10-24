@@ -78,7 +78,6 @@ sign:
 		$(APP_BUNDLE)
 	codesign --verify --verbose $(APP_BUNDLE)
 
-# Unsigned zip helper only. Full ship path: scripts/release.sh X.Y.Z
 release-universal: build-universal sign
 	cd $(BUILD_DIR) && zip -r -y $(APP_NAME)-$(VERSION)-universal.zip $(APP_NAME).app
 	@echo "Created $(BUILD_DIR)/$(APP_NAME)-$(VERSION)-universal.zip"

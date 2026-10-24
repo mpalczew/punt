@@ -9,7 +9,6 @@ class AutoUpdater {
     private var checkTimer: Timer?
     private var isUpdateInProgress = false
 
-    /// Set by AppDelegate to query panel visibility.
     var isPanelHidden: () -> Bool = { true }
 
     static var isEnabled: Bool {

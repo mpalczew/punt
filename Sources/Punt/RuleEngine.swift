@@ -28,17 +28,14 @@ enum RuleEngine {
         }
     }
 
-    /// Returns the matching rule for a URL, or nil if no rule matches.
     static func match(url: URL, sourceAppBundleId: String? = nil) -> Rule? {
         guard let host = url.host?.lowercased() else { return nil }
 
         for rule in rules {
-            // Check source app
             if rule.sourceApp != "*" {
                 guard let source = sourceAppBundleId, rule.sourceApp == source else { continue }
             }
 
-            // Check domain
             if rule.domain == "*" {
                 return rule
             }
