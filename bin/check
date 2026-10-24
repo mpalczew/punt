@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: bin/check [all|<gate>]   gates: build harness (harness always runs)
+# Usage: bin/check [--staged|all|<gate>]   gates: build harness (harness always runs)
 # No argument: run gates whose paths changed against main (working tree included).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -40,8 +40,28 @@ changed() {
   [[ -n $(git diff --name-only main -- "${paths[@]}" 2>/dev/null; git ls-files --others --exclude-standard -- "${paths[@]}") ]]
 }
 
+staged_run() {
+  local files tmp="" g p re
+  files=$(git diff --cached --name-only --diff-filter=ACDMR)
+  gate_harness
+  for g in "${GATES[@]}"; do
+    [[ $g == harness ]] && continue
+    p="${g}_paths"; local -n ps=$p
+    re="^($(IFS='|'; echo "${ps[*]}"))(/|$)"
+    printf '%s\n' "$files" | rg -q "$re" || continue
+    if [[ -z $tmp ]]; then
+      tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+      git checkout-index -a --prefix="$tmp/"
+      [[ -d .build ]] && ln -s "$PWD/.build" "$tmp/.build"
+    fi
+    (cd "$tmp" && "gate_$g") || exit 1
+  done
+  exit 0
+}
+
 arg=${1:-}
 case $arg in
+  --staged) staged_run ;;
   all) for g in "${GATES[@]}"; do "gate_$g"; done ;;
   "")
     gate_harness
