@@ -1,7 +1,6 @@
 # Agents
 
-## How to Work With the User
-- Present options and be opinionated. Lead with your recommendation, explain trade-offs briefly, let the user decide.
+## Rules
 - Zero external dependencies. Do not introduce third-party packages.
 - One class/protocol/struct per file.
 
